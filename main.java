@@ -158,7 +158,7 @@ class lightboard{
         // พิมพ์เลขคอลัมน์ด้านบน (Header)
         System.out.print("      "); // เว้นช่องว่างสำหรับคำว่า row
         for (int c = 0; c < board; c++) {
-            System.out.printf("| col %d ", c);
+            System.out.printf("| col %d", c);
         }
         System.out.println("|");
         // พิมพ์ข้อมูลในแต่ละแถว
@@ -188,38 +188,135 @@ class lightboard{
         createEdgesForNode(node[row][col]);
     }
 }
-public class main { //ยังไม่ได้กั้น error index out of bound จากการรับinput ใดๆ
-    static public void main(String[] arg)
-    {
+public class main {
+    static public void main(String[] arg) {
         main mainapp = new main();
         mainapp.start();
     }
-    public void start()
-    {
-        Scanner in = new Scanner(System.in);
-        System.out.printf("start:");
-        int b = in.nextInt();//ฝากกั้น errorด้วย
-        in.nextLine();
-        create(b,in);
 
-    }
-    public void create(int board,Scanner in) {
-        System.out.printf("initial state (row first) left to right :");
-        String prepare = in.nextLine();
-        lightboard A = new lightboard(board,prepare);
-        A.show();
-        System.out.printf("Set broken light (Y/N)?");
-        String select = in.nextLine();
-        if(select.equalsIgnoreCase("y"))
-        {
-            System.out.printf("Enter row of broken light (0-%d) = ",board);
-            int row = in.nextInt();
-            System.out.printf("Enter col of broken light (0-%d) = ",board);
-            int col = in.nextInt();
-            A.setBroken(row,col);
+    public void start() {
+        Scanner in = new Scanner(System.in);
+        int b = -1;
+        while (b < 2) {
+            System.out.print("Enter grid size N (N x N, min 2): ");
+            String line = in.nextLine().trim();
+            try {
+                b = Integer.parseInt(line);
+                if (b < 2) System.out.println("  [!] N must be at least 2.");
+            } catch (NumberFormatException e) {
+                System.out.println("  [!] Please enter a valid integer.");
+            }
         }
+        create(b, in);
+    }
+
+    public void create(int board, Scanner in) {
+        // รับ initial state
+        String prepare = "";
+        while (true) {
+            System.out.printf("Enter initial state (%d bits, left to right, e.g. %s): ",
+                    board * board, exampleBits(board));
+            prepare = in.nextLine().trim();
+            if (prepare.length() == board * board && prepare.matches("[01]+")) break;
+            System.out.println("  [!] Please enter exactly " + (board * board)
+                    + " characters using only '0' and '1'.");
+        }
+
+        lightboard A = new lightboard(board, prepare);
         A.show();
+
+        // ถามไฟเสีย
+        System.out.print("Set broken light (Y/N)? ");
+        String select = in.nextLine().trim();
+        while (!select.equalsIgnoreCase("y") && !select.equalsIgnoreCase("n")) {
+            System.out.print("  [!] Please enter Y or N: ");
+            select = in.nextLine().trim();
+        }
+
+        if (select.equalsIgnoreCase("y")) {
+            int row = readInt(in,
+                    "Enter row of broken light (0-" + (board - 1) + ") = ",
+                    0, board - 1,
+                    "  [!] Row must be between 0 and " + (board - 1) + ".");
+            int col = readInt(in,
+                    "Enter col of broken light (0-" + (board - 1) + ") = ",
+                    0, board - 1,
+                    "  [!] Col must be between 0 and " + (board - 1) + ".");
+            A.setBroken(row, col);
+        }
+
+        A.show();
+
+        // Solve
+        List<int[]> solution = A.solveBFS(prepare);
+        if (solution == null) {
+            System.out.println("No solution !!");
+        } else {
+            System.out.println(solution.size() + " moves to turn off all lights");
+            // replay + แสดง
+            String currentBits = prepare;
+            int brokenR = A.getBrokenR();
+            int brokenC = A.getBrokenC();
+            for (int step = 0; step < solution.size(); step++) {
+                int r = solution.get(step)[0];
+                int c = solution.get(step)[1];
+                System.out.printf("%n>>> Move %d : turn %s row %d, col %d%n",
+                        step + 1,
+                        currentBits.charAt(r * board + c) == '1' ? "off" : "on",
+                        r, c);
+                currentBits = replayPress(currentBits, r, c, board, brokenR, brokenC);
+                System.out.println("States in bits = " + currentBits);
+                A.show();
+            }
+        }
+
+        // ถามเล่นใหม่
+        System.out.print("\nPlay again? (Y/N): ");
+        String again = in.nextLine().trim();
+        while (!again.equalsIgnoreCase("y") && !again.equalsIgnoreCase("n")) {
+            System.out.print("  [!] Please enter Y or N: ");
+            again = in.nextLine().trim();
+        }
+        if (again.equalsIgnoreCase("y")) start();
         A.solveBFS(prepare);
 
+    }
+
+    private int readInt(Scanner in, String prompt, int min, int max, String errorMsg) {
+        while (true) {
+            System.out.print(prompt);
+            String line = in.nextLine().trim();
+            try {
+                int val = Integer.parseInt(line);
+                if (val >= min && val <= max) return val;
+                System.out.println(errorMsg);
+            } catch (NumberFormatException e) {
+                System.out.println(errorMsg);
+            }
+        }
+    }
+
+    private String replayPress(String bits, int r, int c, int n, int brokenR, int brokenC) {
+        char[] arr = bits.toCharArray();
+        flipBit(arr, r, c, n);
+        boolean isBroken = (r == brokenR && c == brokenC);
+        int[][] dirs = isBroken
+                ? new int[][]{{r-1,c-1},{r-1,c+1},{r+1,c-1},{r+1,c+1}}
+                : new int[][]{{r-1,c},{r+1,c},{r,c-1},{r,c+1}};
+        for (int[] nb : dirs)
+            if (nb[0] >= 0 && nb[0] < n && nb[1] >= 0 && nb[1] < n)
+                flipBit(arr, nb[0], nb[1], n);
+        return new String(arr);
+    }
+
+    private void flipBit(char[] arr, int r, int c, int n) {
+        int i = r * n + c;
+        arr[i] = arr[i] == '0' ? '1' : '0';
+    }
+
+    private String exampleBits(int n) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < n * n; i++) sb.append(i % 3 == 0 ? '1' : '0');
+        return sb.toString();
     }
 }
