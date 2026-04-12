@@ -52,7 +52,19 @@ class lightboard{
             }
         }
     }
-    public void solveBFS(String initialBits) {
+    public String nodetostring()
+    {
+        String allbits="";
+        for(int r=0;r<board;r++)
+            for(int c=0;c<board;c++)
+            {
+                if(node[r][c].checkon())
+                    allbits +="1";
+                else allbits +="0";
+            }
+        return allbits;
+    }
+    public int solveBFS(String initialBits) {
         Queue<BoardState> queue = new ArrayDeque<>();
         Set<String> visited = new HashSet<>();
 
@@ -87,9 +99,10 @@ class lightboard{
                         light neighbor = overboard.getEdgeTarget(e);
                         neighbor.toggle();
                     }
+                    System.out.println("States in bits = "+nodetostring());
                     show();
                 }
-                return ; // จบการทำงานเพราะเจอคำตอบที่สั้นที่สุดแล้ว
+                return current.history.size(); // จบการทำงานเพราะเจอคำตอบที่สั้นที่สุดแล้ว
             }
             // 3. ถ้ายังไม่จบ ลองกดทุกปุ่มที่เป็นไปได้ (0,0 ถึง n-1,n-1)
             for (int r = 0; r < board; r++) {
@@ -107,6 +120,7 @@ class lightboard{
         }
         // ถ้าคิวว่างแล้วยังไม่เจอคำตอบ
         System.out.println("No solution!!");
+        return -1;
     }
 
     // เมธอดจำลองการเปลี่ยนค่า String bits เมื่อมีการกดปุ่ม (r,c)
@@ -246,29 +260,8 @@ public class main {
         }
 
         A.show();
+        A.solveBFS(prepare);
 
-        // Solve
-        List<int[]> solution = A.solveBFS(prepare);
-        if (solution == null) {
-            System.out.println("No solution !!");
-        } else {
-            System.out.println(solution.size() + " moves to turn off all lights");
-            // replay + แสดง
-            String currentBits = prepare;
-            int brokenR = A.getBrokenR();
-            int brokenC = A.getBrokenC();
-            for (int step = 0; step < solution.size(); step++) {
-                int r = solution.get(step)[0];
-                int c = solution.get(step)[1];
-                System.out.printf("%n>>> Move %d : turn %s row %d, col %d%n",
-                        step + 1,
-                        currentBits.charAt(r * board + c) == '1' ? "off" : "on",
-                        r, c);
-                currentBits = replayPress(currentBits, r, c, board, brokenR, brokenC);
-                System.out.println("States in bits = " + currentBits);
-                A.show();
-            }
-        }
 
         // ถามเล่นใหม่
         System.out.print("\nPlay again? (Y/N): ");
@@ -278,8 +271,6 @@ public class main {
             again = in.nextLine().trim();
         }
         if (again.equalsIgnoreCase("y")) start();
-        A.solveBFS(prepare);
-
     }
 
     private int readInt(Scanner in, String prompt, int min, int max, String errorMsg) {
@@ -295,25 +286,6 @@ public class main {
             }
         }
     }
-
-    private String replayPress(String bits, int r, int c, int n, int brokenR, int brokenC) {
-        char[] arr = bits.toCharArray();
-        flipBit(arr, r, c, n);
-        boolean isBroken = (r == brokenR && c == brokenC);
-        int[][] dirs = isBroken
-                ? new int[][]{{r-1,c-1},{r-1,c+1},{r+1,c-1},{r+1,c+1}}
-                : new int[][]{{r-1,c},{r+1,c},{r,c-1},{r,c+1}};
-        for (int[] nb : dirs)
-            if (nb[0] >= 0 && nb[0] < n && nb[1] >= 0 && nb[1] < n)
-                flipBit(arr, nb[0], nb[1], n);
-        return new String(arr);
-    }
-
-    private void flipBit(char[] arr, int r, int c, int n) {
-        int i = r * n + c;
-        arr[i] = arr[i] == '0' ? '1' : '0';
-    }
-
     private String exampleBits(int n) {
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < n * n; i++) sb.append(i % 3 == 0 ? '1' : '0');
