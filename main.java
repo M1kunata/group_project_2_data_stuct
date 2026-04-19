@@ -1,10 +1,13 @@
+//6713115 Kornchanok Phutrakul
+//6713117 Nuttha Limkhunthammo
+//6713221 jakkarin roemtangsakul
 package Project2_6713221;
 import org.jgrapht.Graph;
 import org.jgrapht.Graphs;
 import org.jgrapht.graph.DefaultDirectedGraph;
 import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.graph.DefaultWeightedEdge;
-
+ 
 import java.util.*;
 class light
 {
@@ -24,8 +27,8 @@ class light
 }
 class BoardState {
     String bits;               // เช่น "110101..."
-    List<String> history;      // เช่น ["0,0", "1,2"]
-
+    List<String> history;      // เช่น ["(0,0)", "(1,2)"]
+ 
     public BoardState(String bits, List<String> history) {
         this.bits = bits;
         this.history = history;
@@ -64,42 +67,62 @@ class lightboard{
             }
         return allbits;
     }
+ 
+    // [FIX] รีเซ็ต node[][] ให้ตรงกับ bits string ที่กำหนด
+    private void resetNodeState(String bits) {
+        for (int r = 0; r < board; r++)
+            for (int c = 0; c < board; c++) {
+                boolean shouldBeOn = bits.charAt(r * board + c) == '1';
+                // ปรับสถานะให้ตรงกับ bits
+                if (node[r][c].checkon() != shouldBeOn)
+                    node[r][c].toggle();
+            }
+    }
+ 
     public int solveBFS(String initialBits) {
         Queue<BoardState> queue = new ArrayDeque<>();
         Set<String> visited = new HashSet<>();
-
+ 
         // สร้างเป้าหมาย: สตริงที่มีแต่ '0' ตามขนาดกระดาน
         StringBuilder targetBuilder = new StringBuilder();
         for (int i = 0; i < board * board; i++) {
             targetBuilder.append("0");
         }
         String targetBits = targetBuilder.toString();
-
+ 
         // 1. เริ่มต้น: ใส่สถานะแรกลงไป
         queue.add(new BoardState(initialBits, new ArrayList<>()));
         visited.add(initialBits);
-
+ 
         System.out.println("\nStart searching for solution (BFS)...");
-
+ 
         // 2. เริ่มรัน BFS
         while (!queue.isEmpty()) {
             BoardState current = queue.poll();
-
+ 
             // เช็คว่าสถานะปัจจุบันคือไฟดับหมดหรือยัง
             if (current.bits.equals(targetBits)) {
-                System.out.println(current.history.size()+" move to turn off all lights");
+                System.out.println(current.history.size()+" move(s) to turn off all lights");
+ 
+                // [FIX] รีเซ็ต node[][] กลับไปที่ initialBits ก่อน replay
+                resetNodeState(initialBits);
+ 
                 for (int i=0;i<current.history.size();i++)
                 {
-                    String[] rowandcol = current.history.get(i).substring(1,4).split(",");
-                    System.out.println(">> Move "+(i+1)+" turn off row "+rowandcol[0]+", col "+rowandcol[1]);
+                    // [FIX] parse "(r,c)" อย่างถูกต้อง รองรับเลขหลายหลัก
+                    String coord = current.history.get(i);
+                    String inner = coord.substring(1, coord.length() - 1); // ตัด ( และ )
+                    String[] rowandcol = inner.split(",");
+ 
                     int row = Integer.parseInt(rowandcol[0]);
                     int col = Integer.parseInt(rowandcol[1]);
+                    System.out.println(">> Move "+(i+1)+" : toggle row "+row+", col "+col);
                     node[row][col].toggle();
                     for (DefaultEdge e : overboard.outgoingEdgesOf(node[row][col])) {
                         light neighbor = overboard.getEdgeTarget(e);
                         neighbor.toggle();
                     }
-                    System.out.println("States in bits = "+nodetostring());
+                    System.out.println("   State in bits = "+nodetostring());
                     show();
                 }
                 return current.history.size(); // จบการทำงานเพราะเจอคำตอบที่สั้นที่สุดแล้ว
@@ -122,7 +145,7 @@ class lightboard{
         System.out.println("No solution!!");
         return -1;
     }
-
+ 
     // เมธอดจำลองการเปลี่ยนค่า String bits เมื่อมีการกดปุ่ม (r,c)
     private String simulatePress(String currentBits, int r, int c) {
         char[] bits = currentBits.toCharArray();
@@ -131,20 +154,19 @@ class lightboard{
         // 2. ดึง Node ปัจจุบัน
         light source = node[r][c];
         // 3. กดเพื่อนบ้าน (ดึงมาจาก Edge ใน JGraphT ที่คุณสร้างไว้)
-        // ใช้ Graphs.neighborListOf เพื่อดึงเพื่อนบ้านที่เชื่อมด้วย Edge ทั้งหมดมาได้เลย
         for (DefaultEdge e : overboard.outgoingEdgesOf(source)) {
             light neighbor = overboard.getEdgeTarget(e);
             toggleChar(bits, neighbor.getRow(), neighbor.getCol());
         }
         return new String(bits);
     }
-
+ 
     // เมธอดช่วยสลับตัวอักษร '0' เป็น '1' และ '1' เป็น '0'
     private void toggleChar(char[] bits, int r, int c) {
         int index = r * board + c;
         bits[index] = (bits[index] == '1') ? '0' : '1';
     }
-
+ 
     private void createEdgesForNode(light node) {
         int r = node.getRow();
         int c = node.getCol();
@@ -158,7 +180,7 @@ class lightboard{
             addValidEdges(node, diagonals);
         }
     }
-
+ 
     private void addValidEdges(light source, int[][] targets) {
         for (int[] pos : targets) {
             int tr = pos[0], tc = pos[1];
@@ -167,7 +189,7 @@ class lightboard{
             }
         }
     }
-    public void show()//gen ma
+    public void show()
     {
         // พิมพ์เลขคอลัมน์ด้านบน (Header)
         System.out.print("      "); // เว้นช่องว่างสำหรับคำว่า row
@@ -185,7 +207,6 @@ class lightboard{
                     status=1;
                 else status=0;
                 String mark = node[i][j].getbroken() ? "x" : " ";
-                // แสดงผลในรูปแบบ " 1  " หรือ " 1x " ตามเงื่อนไขไฟเสีย [cite: 19, 125]
                 System.out.printf("  %d%s  |", status, mark);
             }
             System.out.println(); // ขึ้นบรรทัดใหม่เมื่อจบแถว
@@ -207,7 +228,7 @@ public class main {
         main mainapp = new main();
         mainapp.start();
     }
-
+ 
     public void start() {
         Scanner in = new Scanner(System.in);
         int b = -1;
@@ -223,7 +244,7 @@ public class main {
         }
         create(b, in);
     }
-
+ 
     public void create(int board, Scanner in) {
         // รับ initial state
         String prepare = "";
@@ -235,10 +256,10 @@ public class main {
             System.out.println("  [!] Please enter exactly " + (board * board)
                     + " characters using only '0' and '1'.");
         }
-
+ 
         lightboard A = new lightboard(board, prepare);
         A.show();
-
+ 
         // ถามไฟเสีย
         System.out.print("Set broken light (Y/N)? ");
         String select = in.nextLine().trim();
@@ -246,7 +267,7 @@ public class main {
             System.out.print("  [!] Please enter Y or N: ");
             select = in.nextLine().trim();
         }
-
+ 
         if (select.equalsIgnoreCase("y")) {
             int row = readInt(in,
                     "Enter row of broken light (0-" + (board - 1) + ") = ",
@@ -258,11 +279,10 @@ public class main {
                     "  [!] Col must be between 0 and " + (board - 1) + ".");
             A.setBroken(row, col);
         }
-
+ 
         A.show();
         A.solveBFS(prepare);
-
-
+ 
         // ถามเล่นใหม่
         System.out.print("\nPlay again? (Y/N): ");
         String again = in.nextLine().trim();
@@ -272,7 +292,7 @@ public class main {
         }
         if (again.equalsIgnoreCase("y")) start();
     }
-
+ 
     private int readInt(Scanner in, String prompt, int min, int max, String errorMsg) {
         while (true) {
             System.out.print(prompt);
