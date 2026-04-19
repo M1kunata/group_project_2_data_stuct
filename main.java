@@ -73,7 +73,6 @@ class lightboard{
         for (int r = 0; r < board; r++)
             for (int c = 0; c < board; c++) {
                 boolean shouldBeOn = bits.charAt(r * board + c) == '1';
-                // ปรับสถานะให้ตรงกับ bits
                 if (node[r][c].checkon() != shouldBeOn)
                     node[r][c].toggle();
             }
@@ -83,14 +82,12 @@ class lightboard{
         Queue<BoardState> queue = new ArrayDeque<>();
         Set<String> visited = new HashSet<>();
  
-        // สร้างเป้าหมาย: สตริงที่มีแต่ '0' ตามขนาดกระดาน
         StringBuilder targetBuilder = new StringBuilder();
         for (int i = 0; i < board * board; i++) {
             targetBuilder.append("0");
         }
         String targetBits = targetBuilder.toString();
  
-        // 1. เริ่มต้น: ใส่สถานะแรกลงไป
         queue.add(new BoardState(initialBits, new ArrayList<>()));
         visited.add(initialBits);
  
@@ -149,11 +146,8 @@ class lightboard{
     // เมธอดจำลองการเปลี่ยนค่า String bits เมื่อมีการกดปุ่ม (r,c)
     private String simulatePress(String currentBits, int r, int c) {
         char[] bits = currentBits.toCharArray();
-        // 1. กดสลับไฟที่ตัวมันเอง
         toggleChar(bits, r, c);
-        // 2. ดึง Node ปัจจุบัน
         light source = node[r][c];
-        // 3. กดเพื่อนบ้าน (ดึงมาจาก Edge ใน JGraphT ที่คุณสร้างไว้)
         for (DefaultEdge e : overboard.outgoingEdgesOf(source)) {
             light neighbor = overboard.getEdgeTarget(e);
             toggleChar(bits, neighbor.getRow(), neighbor.getCol());
@@ -171,11 +165,9 @@ class lightboard{
         int r = node.getRow();
         int c = node.getCol();
         if (!node.getbroken()) {
-            // กรณีไฟปกติ: ตรวจสอบเพื่อนบ้านบน ล่าง ซ้าย ขวา
             int[][] neighbors = {{r-1, c}, {r+1, c}, {r, c-1}, {r, c+1}};
             addValidEdges(node, neighbors);
         } else {
-            // กรณีไฟเสีย: ตรวจสอบเพื่อนบ้านแนวทแยง 4 ทิศ
             int[][] diagonals = {{r-1, c-1}, {r-1, c+1}, {r+1, c-1}, {r+1, c+1}};
             addValidEdges(node, diagonals);
         }
